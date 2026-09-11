@@ -308,6 +308,9 @@ namespace NoVikingLeftBehind
                  "Player.HaveRequirements(Recipe,bool,int,int)");
             Harmony.Patch(m, postfix: M(nameof(HaveRecipePost)));
 
+            Need(ref m, typeof(Player), "GetFirstRequiredItem", new[] { typeof(Inventory), typeof(Recipe), typeof(int), typeof(int).MakeByRefType(), typeof(int).MakeByRefType(), typeof(int) }, "Player.GetFirstRequiredItem(...)");
+            Harmony.Patch(m, postfix: M(nameof(FirstRequiredItemPost)));
+
             // --- building -------------------------------------------------------------------------
             Need(ref m, typeof(Player), "HaveRequirements",
                  new[] { typeof(Piece), typeof(Player.RequirementMode) },
@@ -416,12 +419,7 @@ namespace NoVikingLeftBehind
             if (__instance != Player.m_localPlayer) { Diag(recipe, "not the local player"); return; }
             if (recipe == null || recipe.m_resources == null || recipe.m_item == null) return;
 
-            // "Only one ingredient" recipes pick a concrete ItemData in Player.GetFirstRequiredItem
-            // and DoCrafting silently does nothing when that comes back null. Saying "yes you can"
-            // here without also producing that item would give a dead craft button, so these stay
-            // vanilla: they craft from the player's own inventory only.
-            if (recipe.m_requireOnlyOneIngredient) { Diag(recipe, "requireOnlyOneIngredient -> vanilla"); return; }
-
+            // GetFirstRequiredItem is patched below for recipes whose concrete item is in a chest.
             try
             {
                 // Vanilla returned false; it may have been the station or the DLC, not the items.
@@ -488,6 +486,42 @@ namespace NoVikingLeftBehind
                 if (best >= need) break;
             }
             return best;
+        }
+
+        private static void FirstRequiredItemPost(Player __instance, Inventory inventory, Recipe recipe,
+                                                  int qualityLevel, ref int amount, ref int extraAmount,
+                                                  int craftMultiplier, ref ItemDrop.ItemData __result)
+        {
+            if (__result != null || !Live() || !_pullCrafting.Value) return;
+            if (__instance != Player.m_localPlayer || recipe == null || recipe.m_resources == null) return;
+            try
+            {
+                var boxes = ChestSource.Nearby(__instance.transform.position);
+                if (boxes.Count == 0) return;
+                foreach (var req in recipe.m_resources)
+                {
+                    if (req == null || !req.m_resItem) continue;
+                    string shared = req.m_resItem.m_itemData.m_shared.m_name;
+                    string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
+                    if (ChestSource.ItemBlocked(prefab, shared)) continue;
+                    int required = req.GetAmount(qualityLevel) * craftMultiplier;
+                    if (required <= 0 || ChestSource.Count(shared, boxes) < required) continue;
+                    for (int i = 0; i < boxes.Count; i++)
+                    {
+                        var item = boxes[i].Inv != null ? boxes[i].Inv.GetItem(shared) : null;
+                        if (item == null) continue;
+                        __result = item;
+                        amount = required;
+                        extraAmount = req.m_extraAmountOnlyOneIngredient;
+                        Diag(recipe, "selected " + shared + " from nearby container");
+                        return;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning("[Chests] GetFirstRequiredItem postfix: " + e.Message);
+            }
         }
 
         // ---- building: can I place this? -------------------------------------------------------------
