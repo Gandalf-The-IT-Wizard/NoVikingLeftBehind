@@ -1,6 +1,13 @@
 
 # Changelog — NoVikingLeftBehind
 
+## 1.0.0 (2026-09-11) — CraftFromChests crafting fix
+
+* Fixed crafting recipes failing with **Missing requirement** when their materials were available in nearby accessible containers.
+* Added concrete item resolution through `Player.GetFirstRequiredItem`, allowing vanilla `DoCrafting` to complete the same chest-backed craft path as the UI check.
+* Corrected alternative-ingredient recipes so they are evaluated as “one sufficient ingredient” rather than requiring every alternative.
+* Built against Valheim `1.0.7` (network version 39) and BepInEx `5.4.2350`.
+
 ## 0.10.0 (2026-09-09) — BuildersGuild: cheaper building at the base (38th module)
 
 New module **BuildersGuild** `[Builders]` — build big at your base without turning costs off. Three factors, all live-editable,
