@@ -437,6 +437,7 @@ namespace NoVikingLeftBehind
                 if (boxes.Count == 0) { Diag(recipe, "no containers in range"); return; }
 
                 var sb = _diag != null && _diag.Value ? new StringBuilder() : null;
+                bool foundOne = false;
                 foreach (var req in recipe.m_resources)
                 {
                     if (req == null || !req.m_resItem) continue;
@@ -444,7 +445,13 @@ namespace NoVikingLeftBehind
                     if (need <= 0) continue;
                     int have = Available(__instance, req, need, boxes);
                     if (sb != null) sb.Append(req.m_resItem.m_itemData.m_shared.m_name).Append(' ').Append(have).Append('/').Append(need).Append(' ');
-                    if (have < need)
+                    if (have >= need)
+                    {
+                        foundOne = true;
+                        if (recipe.m_requireOnlyOneIngredient) break;
+                        continue;
+                    }
+                    if (!recipe.m_requireOnlyOneIngredient)
                     {
                         Diag(recipe, "short: " + sb + "(boxes=" + boxes.Count + ", bag=" +
                                      __instance.m_inventory.CountItems(req.m_resItem.m_itemData.m_shared.m_name) +
@@ -455,8 +462,11 @@ namespace NoVikingLeftBehind
                     }
                 }
 
-                __result = true;
-                Diag(recipe, "OK from containers: " + sb);
+                if (foundOne || !recipe.m_requireOnlyOneIngredient)
+                {
+                    __result = true;
+                    Diag(recipe, "OK from containers: " + sb);
+                }
             }
             catch (Exception e)
             {
