@@ -415,14 +415,19 @@ namespace NoVikingLeftBehind
             Log.LogInfo(msg);
         }
 
+        private static bool _innerRequirementItemsCheck;
+
         [HarmonyPriority(Priority.VeryHigh)]
         private static void HaveRequirementItemsPost(Player __instance, Recipe piece, bool discover,
                                                        int qualityLevel, int amount, ref bool __result)
         {
             // Valheim 1.0.7 names this parameter "piece". Harmony matches patch
             // arguments by name, so this must not be renamed to "recipe".
-            // Keep the outer HaveRequirements patch too because other paths use it.
-            HaveRecipePost(__instance, piece, discover, qualityLevel, amount, ref __result);
+            // This inner method checks item availability only. The outer
+            // HaveRequirements path owns the crafting-station/DLC gates.
+            _innerRequirementItemsCheck = true;
+            try { HaveRecipePost(__instance, piece, discover, qualityLevel, amount, ref __result); }
+            finally { _innerRequirementItemsCheck = false; }
         }
 
         private static void HaveRecipePost(Player __instance, Recipe recipe, bool discover,
@@ -437,8 +442,9 @@ namespace NoVikingLeftBehind
             // GetFirstRequiredItem is patched below for recipes whose concrete item is in a chest.
             try
             {
-                // Vanilla returned false; it may have been the station or the DLC, not the items.
-                if (!__instance.RequiredCraftingStation(recipe, qualityLevel, true))
+                // The inner HaveRequirementItems call is deliberately item-only;
+                // the outer HaveRequirements call must still preserve vanilla station gating.
+                if (!_innerRequirementItemsCheck && !__instance.RequiredCraftingStation(recipe, qualityLevel, true))
                 {
                     var cs = __instance.GetCurrentCraftingStation();
                     Diag(recipe, "RequiredCraftingStation=false (current station=" + (cs ? cs.m_name + " L" + cs.GetLevel() : "none") +
@@ -446,7 +452,7 @@ namespace NoVikingLeftBehind
                     return;
                 }
                 var dlc = recipe.m_item.m_itemData.m_shared.m_dlc;
-                if (dlc.Length > 0 && !DLCMan.instance.IsDLCInstalled(dlc)) { Diag(recipe, "DLC missing"); return; }
+                if (!_innerRequirementItemsCheck && dlc.Length > 0 && !DLCMan.instance.IsDLCInstalled(dlc)) { Diag(recipe, "DLC missing"); return; }
 
                 var boxes = ChestSource.Nearby(__instance.transform.position);
                 if (boxes.Count == 0) { Diag(recipe, "no containers in range"); return; }
