@@ -415,6 +415,7 @@ namespace NoVikingLeftBehind
             Log.LogInfo(msg);
         }
 
+        [HarmonyPriority(Priority.VeryHigh)]
         private static void HaveRequirementItemsPost(Player __instance, Recipe recipe, bool discover,
                                                        int qualityLevel, int amount, ref bool __result)
         {
@@ -499,16 +500,13 @@ namespace NoVikingLeftBehind
             string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
             bool blocked = ChestSource.ItemBlocked(prefab, shared);
 
-            int best = 0;
-            int maxQ = Mathf.Max(1, req.m_resItem.m_itemData.m_shared.m_maxQuality);
-            for (int q = 1; q <= maxQ; q++)
-            {
-                int have = p.m_inventory.CountItems(shared, q);
-                if (!blocked && have < need) have += ChestSource.Count(shared, boxes, q);
-                if (have > best) best = have;
-                if (best >= need) break;
-            }
-            return best;
+            // Crafting requirements are consumed by shared name. Count all qualities
+            // together, matching vanilla's inventory check and the established chest
+            // crafting behaviour used by AzuCraftyBoxes. Splitting this by quality can
+            // report a false shortage for ordinary quality-1 materials in Valheim 1.0.7.
+            int have = p.m_inventory.CountItems(shared);
+            if (!blocked && have < need) have += ChestSource.Count(shared, boxes);
+            return have;
         }
 
         private static void FirstRequiredItemPost(Player __instance, Inventory inventory, Recipe recipe,
