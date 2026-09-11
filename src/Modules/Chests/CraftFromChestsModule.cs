@@ -303,6 +303,11 @@ namespace NoVikingLeftBehind
             Harmony.Patch(m, postfix: M(nameof(ContainerDestroyedPost)));
 
             // --- crafting / upgrading -----------------------------------------------------------
+            Need(ref m, typeof(Player), "HaveRequirementItems",
+                 new[] { typeof(Recipe), typeof(bool), typeof(int), typeof(int) },
+                 "Player.HaveRequirementItems(Recipe,bool,int,int)");
+            Harmony.Patch(m, postfix: M(nameof(HaveRequirementItemsPost)));
+
             Need(ref m, typeof(Player), "HaveRequirements",
                  new[] { typeof(Recipe), typeof(bool), typeof(int), typeof(int) },
                  "Player.HaveRequirements(Recipe,bool,int,int)");
@@ -408,6 +413,14 @@ namespace NoVikingLeftBehind
             if (msg == _lastDiag && Time.realtimeSinceStartup - _lastDiagAt < 2f) return;
             _lastDiag = msg; _lastDiagAt = Time.realtimeSinceStartup;
             Log.LogInfo(msg);
+        }
+
+        private static void HaveRequirementItemsPost(Player __instance, Recipe recipe, bool discover,
+                                                       int qualityLevel, int amount, ref bool __result)
+        {
+            // Valheim 1.0.7's crafting UI calls this inner check directly. Keep the
+            // outer HaveRequirements patch too because other UI/game paths use it.
+            HaveRecipePost(__instance, recipe, discover, qualityLevel, amount, ref __result);
         }
 
         private static void HaveRecipePost(Player __instance, Recipe recipe, bool discover,
