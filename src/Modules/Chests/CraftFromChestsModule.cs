@@ -416,12 +416,13 @@ namespace NoVikingLeftBehind
         }
 
         [HarmonyPriority(Priority.VeryHigh)]
-        private static void HaveRequirementItemsPost(Player __instance, Recipe recipe, bool discover,
+        private static void HaveRequirementItemsPost(Player __instance, Recipe piece, bool discover,
                                                        int qualityLevel, int amount, ref bool __result)
         {
-            // Valheim 1.0.7's crafting UI calls this inner check directly. Keep the
-            // outer HaveRequirements patch too because other UI/game paths use it.
-            HaveRecipePost(__instance, recipe, discover, qualityLevel, amount, ref __result);
+            // Valheim 1.0.7 names this parameter "piece". Harmony matches patch
+            // arguments by name, so this must not be renamed to "recipe".
+            // Keep the outer HaveRequirements patch too because other paths use it.
+            HaveRecipePost(__instance, piece, discover, qualityLevel, amount, ref __result);
         }
 
         private static void HaveRecipePost(Player __instance, Recipe recipe, bool discover,
