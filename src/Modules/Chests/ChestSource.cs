@@ -98,6 +98,27 @@ namespace NoVikingLeftBehind
             _cacheFrame = -1;
         }
 
+        /// <summary>
+        /// Container.Awake is not guaranteed to run after our Harmony patches are installed:
+        /// world objects can already exist when the client half enters a loaded world. Recover
+        /// those objects lazily on the first query instead of relying only on the Awake hook.
+        /// </summary>
+        private static void DiscoverExisting()
+        {
+            if (_all.Count > 0) return;
+            try
+            {
+                var containers = UnityEngine.Object.FindObjectsOfType<Container>();
+                for (int i = 0; i < containers.Length; i++) Register(containers[i]);
+                if (_all.Count > 0)
+                    NoVikingLeftBehindPlugin.Log.LogInfo("[Chests] discovered " + _all.Count + " existing containers");
+            }
+            catch (Exception e)
+            {
+                NoVikingLeftBehindPlugin.Log.LogWarning("[Chests] existing-container discovery failed: " + e.Message);
+            }
+        }
+
         // ---- query ------------------------------------------------------------------------------
 
         private static readonly List<Box> _cached = new List<Box>(64);
@@ -108,6 +129,7 @@ namespace NoVikingLeftBehind
         /// <summary>Containers the local player may legitimately pull from right now.</summary>
         internal static List<Box> Nearby(Vector3 pos)
         {
+            DiscoverExisting();
             int frame = Time.frameCount;
             if (frame == _cacheFrame && (pos - _cachePos).sqrMagnitude < 0.0625f) return _cached;
 
