@@ -1,7 +1,7 @@
 
 # Changelog — NoVikingLeftBehind
 
-## 1.0.1 (2026-09-11) — Crafting availability check fix
+## 1.0.2 (2026-09-11) — Crafting availability check fix
 
 * Fixed the remaining greyed-out Craft button on Valheim 1.0.7 by patching the inner `Player.HaveRequirementItems` check used by the crafting UI.
 * Retained the `HaveRequirements` and `GetFirstRequiredItem` patches for the outer game paths and concrete chest-item resolution.

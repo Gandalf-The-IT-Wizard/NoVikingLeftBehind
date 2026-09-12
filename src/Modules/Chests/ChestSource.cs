@@ -108,10 +108,13 @@ namespace NoVikingLeftBehind
             if (_all.Count > 0) return;
             try
             {
-                var containers = UnityEngine.Object.FindObjectsOfType<Container>();
-                for (int i = 0; i < containers.Length; i++) Register(containers[i]);
-                if (_all.Count > 0)
-                    NoVikingLeftBehindPlugin.Log.LogInfo("[Chests] discovered " + _all.Count + " existing containers");
+                var containers = Resources.FindObjectsOfTypeAll<Container>();
+                for (int i = 0; i < containers.Length; i++)
+                {
+                    var c = containers[i];
+                    if (c == null || c.gameObject == null || !c.gameObject.scene.IsValid()) continue;
+                    Register(c);
+                }
             }
             catch (Exception e)
             {
@@ -139,7 +142,11 @@ namespace NoVikingLeftBehind
 
             long playerId = 0L;
             try { playerId = Game.instance.GetPlayerProfile().GetPlayerID(); }
-            catch { return _empty; }
+            catch (Exception e)
+            {
+                NoVikingLeftBehindPlugin.Log.LogWarning("[Chests] player-profile lookup failed: " + e.Message);
+                return _empty;
+            }
 
             float r2 = Range * Range;
 

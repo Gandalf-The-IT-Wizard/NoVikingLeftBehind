@@ -430,6 +430,11 @@ namespace NoVikingLeftBehind
             finally { _innerRequirementItemsCheck = false; }
         }
 
+        private static bool MatchesStationUpgrader(Piece.Requirement req, CraftingStation station)
+        {
+            return req != null && req.m_upgraderResource == (station != null && station.m_upgrader);
+        }
+
         private static void HaveRecipePost(Player __instance, Recipe recipe, bool discover,
                                            int qualityLevel, int amount, ref bool __result)
         {
@@ -437,7 +442,10 @@ namespace NoVikingLeftBehind
             if (discover) return;
             if (!Live() || !_pullCrafting.Value) { Diag(recipe, "module off or PullForCrafting=false"); return; }
             if (__instance != Player.m_localPlayer) { Diag(recipe, "not the local player"); return; }
-            if (recipe == null || recipe.m_resources == null || recipe.m_item == null) return;
+            if (recipe == null || recipe.m_resources == null || recipe.m_item == null)
+            {
+                return;
+            }
 
             // GetFirstRequiredItem is patched below for recipes whose concrete item is in a chest.
             try
@@ -459,9 +467,10 @@ namespace NoVikingLeftBehind
 
                 var sb = _diag != null && _diag.Value ? new StringBuilder() : null;
                 bool foundOne = false;
+                var station = __instance.GetCurrentCraftingStation();
                 foreach (var req in recipe.m_resources)
                 {
-                    if (req == null || !req.m_resItem) continue;
+                    if (req == null || !req.m_resItem || !MatchesStationUpgrader(req, station)) continue;
                     int need = req.GetAmount(qualityLevel) * amount;
                     if (need <= 0) continue;
                     int have = Available(__instance, req, need, boxes);
@@ -526,9 +535,10 @@ namespace NoVikingLeftBehind
             {
                 var boxes = ChestSource.Nearby(__instance.transform.position);
                 if (boxes.Count == 0) return;
+                var station = __instance.GetCurrentCraftingStation();
                 foreach (var req in recipe.m_resources)
                 {
-                    if (req == null || !req.m_resItem) continue;
+                    if (req == null || !req.m_resItem || !MatchesStationUpgrader(req, station)) continue;
                     string shared = req.m_resItem.m_itemData.m_shared.m_name;
                     string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
                     if (ChestSource.ItemBlocked(prefab, shared)) continue;
@@ -636,10 +646,11 @@ namespace NoVikingLeftBehind
                 var boxes = ChestSource.Nearby(__instance.transform.position);
                 if (boxes.Count == 0) return;
 
+                var station = __instance.GetCurrentCraftingStation();
                 for (int i = 0; i < requirements.Length && i < __state.Length; i++)
                 {
                     var r = requirements[i];
-                    if (r == null || !r.m_resItem) continue;
+                    if (r == null || !r.m_resItem || !MatchesStationUpgrader(r, station)) continue;
 
                     int need = r.GetAmount(qualityLevel) * multiplier;
                     if (need <= 0) continue;
@@ -688,6 +699,8 @@ namespace NoVikingLeftBehind
                 if (!int.TryParse(tmp.text, out need)) need = req.GetAmount(quality) * craftMultiplier;
                 if (need <= 0) return;
 
+                var station = player.GetCurrentCraftingStation();
+                if (!MatchesStationUpgrader(req, station)) return;
                 string shared = req.m_resItem.m_itemData.m_shared.m_name;
                 string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
 
