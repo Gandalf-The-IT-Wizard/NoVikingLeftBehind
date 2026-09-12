@@ -5,7 +5,10 @@ permissions:
 
 on:
   push:
-    tags: ['v*']
+    tags:
+      - 'v*'
+      - '[0-9]*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,9 +31,16 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "${{ github.ref_name }}" dist/*.zip \
-            --title "NoVikingLeftBehind $VERSION" \
-            --generate-notes
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; updating it instead of creating a duplicate."
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "NoVikingLeftBehind $VERSION"
+            gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.zip \
+              --title "NoVikingLeftBehind $VERSION" \
+              --generate-notes
+          fi
 
       # Verified 2026-09-06 against the tcli wiki (github.com/thunderstore-io/thunderstore-cli/wiki):
       # token = env TCLI_AUTH_TOKEN (or --token); `publish --file` takes --package-namespace/--package-name/
