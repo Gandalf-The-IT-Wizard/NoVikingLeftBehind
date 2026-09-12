@@ -1076,8 +1076,18 @@ namespace NoVikingLeftBehind
                 var item = inv.GetItemAt(slot.Pos.x, slot.Pos.y);
                 if (item == null || !SlotLayout.IsFood(item)) continue;
                 if (!p.CanEat(item, false)) continue;
-                if (FoodNoDecayModule.ShouldDelayAutoEat(p, _autoEatExpirySeconds.Value)) continue;
-                p.UseItem(null, item, false);
+                if (FoodNoDecayModule.ShouldDelayAutoEat(p, item, _autoEatExpirySeconds.Value)) continue;
+
+                // Use Player.EatFood directly instead of Humanoid.UseItem. The latter routes
+                // through the generic interact/use-item path, which can reject an ItemData living
+                // in an NVLB extra slot even though it is a valid food item. EatFood is vanilla's
+                // dedicated food path; remove exactly one item only after it accepts the food.
+                if (!p.EatFood(item)) continue;
+                if (!inv.RemoveItem(item, 1))
+                    Log.LogWarning("[Slots] AutoEat ate food but could not remove it from its slot: " + item.m_shared.m_name);
+                else
+                    Log.LogInfo("[Slots] AutoEat: automatically ate " + item.m_shared.m_name +
+                                " from slot '" + slot.Key + "'");
                 return;   // one bite per tick, exactly like a player pressing the key
             }
         }
