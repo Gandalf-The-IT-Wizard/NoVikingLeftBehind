@@ -179,6 +179,27 @@ namespace NoVikingLeftBehind
         }
 
         /// <summary>
+        /// Returns true when AutoEat should leave the food slots alone because an existing food
+        /// effect still has more than the configured grace period left. This is intentionally
+        /// owned by FoodNoDecay: with the module off, AutoEat keeps its vanilla-like behaviour.
+        /// </summary>
+        internal static bool ShouldDelayAutoEat(Player player, float eatWhenSecondsLeft)
+        {
+            if (_self == null || !_self.Active || !ClientActive() || player == null || eatWhenSecondsLeft <= 0f)
+                return false;
+
+            var foods = player.GetFoods();
+            if (foods == null) return false;
+            for (int i = 0; i < foods.Count; i++)
+            {
+                var food = foods[i];
+                if (food != null && food.m_time > eatWhenSecondsLeft)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Drop-in replacement for the <c>Mathf.Pow(f, 0.3f)</c> inside Player.UpdateFood. When the
         /// module is inactive - or this is somehow not the local player's tick - it IS
         /// <c>Mathf.Pow</c>, byte for byte, so an inert module leaves vanilla exactly as it was.

@@ -98,6 +98,30 @@ namespace NoVikingLeftBehind
             _cacheFrame = -1;
         }
 
+        /// <summary>
+        /// Container.Awake is not guaranteed to run after our Harmony patches are installed:
+        /// world objects can already exist when the client half enters a loaded world. Recover
+        /// those objects lazily on the first query instead of relying only on the Awake hook.
+        /// </summary>
+        private static void DiscoverExisting()
+        {
+            if (_all.Count > 0) return;
+            try
+            {
+                var containers = Resources.FindObjectsOfTypeAll<Container>();
+                for (int i = 0; i < containers.Length; i++)
+                {
+                    var c = containers[i];
+                    if (c == null || c.gameObject == null || !c.gameObject.scene.IsValid()) continue;
+                    Register(c);
+                }
+            }
+            catch (Exception e)
+            {
+                NoVikingLeftBehindPlugin.Log.LogWarning("[Chests] existing-container discovery failed: " + e.Message);
+            }
+        }
+
         // ---- query ------------------------------------------------------------------------------
 
         private static readonly List<Box> _cached = new List<Box>(64);
@@ -108,6 +132,7 @@ namespace NoVikingLeftBehind
         /// <summary>Containers the local player may legitimately pull from right now.</summary>
         internal static List<Box> Nearby(Vector3 pos)
         {
+            DiscoverExisting();
             int frame = Time.frameCount;
             if (frame == _cacheFrame && (pos - _cachePos).sqrMagnitude < 0.0625f) return _cached;
 
@@ -117,7 +142,11 @@ namespace NoVikingLeftBehind
 
             long playerId = 0L;
             try { playerId = Game.instance.GetPlayerProfile().GetPlayerID(); }
-            catch { return _empty; }
+            catch (Exception e)
+            {
+                NoVikingLeftBehindPlugin.Log.LogWarning("[Chests] player-profile lookup failed: " + e.Message);
+                return _empty;
+            }
 
             float r2 = Range * Range;
 

@@ -40,6 +40,7 @@ namespace NoVikingLeftBehind
         private ConfigEntry<int> _quickSlots;
         private ConfigEntry<int> _genericSlots;
         private ConfigEntry<bool> _autoEat;
+        private static ConfigEntry<float> _autoEatExpirySeconds;
         private ConfigEntry<bool> _stackAllGuard;
         private ConfigEntry<bool> _showUi;
         private ConfigEntry<string> _quickKeys;
@@ -91,6 +92,11 @@ namespace NoVikingLeftBehind
                 "Server: when a food buff runs out and the same food is sitting in a food slot, " +
                 "eat it automatically.",
                 Opt.B("Automatically eat from a food slot when a buff runs out"));
+            _autoEatExpirySeconds = BindSynced("AutoEatWhenSecondsLeft", 10f,
+                "Server: when FoodNoDecay is enabled, wait until every active food effect has " +
+                "this many seconds or less remaining before eating from a food slot. 0 keeps " +
+                "the old behaviour and eats as soon as vanilla allows it.",
+                Opt.N("Eat from food slots when this many seconds remain", 0, 120, 1));
             _stackAllGuard = BindSynced("StackAllProtectsSlots", true,
                 "Server: keep the vanilla 'Stack all' button and hold-E on a chest out of the extra " +
                 "slots. Vanilla walks the whole bag with no row filter, so a chest holding arrows or " +
@@ -1070,6 +1076,7 @@ namespace NoVikingLeftBehind
                 var item = inv.GetItemAt(slot.Pos.x, slot.Pos.y);
                 if (item == null || !SlotLayout.IsFood(item)) continue;
                 if (!p.CanEat(item, false)) continue;
+                if (FoodNoDecayModule.ShouldDelayAutoEat(p, _autoEatExpirySeconds.Value)) continue;
                 p.UseItem(null, item, false);
                 return;   // one bite per tick, exactly like a player pressing the key
             }

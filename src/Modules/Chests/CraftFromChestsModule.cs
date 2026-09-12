@@ -303,10 +303,18 @@ namespace NoVikingLeftBehind
             Harmony.Patch(m, postfix: M(nameof(ContainerDestroyedPost)));
 
             // --- crafting / upgrading -----------------------------------------------------------
+            Need(ref m, typeof(Player), "HaveRequirementItems",
+                 new[] { typeof(Recipe), typeof(bool), typeof(int), typeof(int) },
+                 "Player.HaveRequirementItems(Recipe,bool,int,int)");
+            Harmony.Patch(m, postfix: M(nameof(HaveRequirementItemsPost)));
+
             Need(ref m, typeof(Player), "HaveRequirements",
                  new[] { typeof(Recipe), typeof(bool), typeof(int), typeof(int) },
                  "Player.HaveRequirements(Recipe,bool,int,int)");
             Harmony.Patch(m, postfix: M(nameof(HaveRecipePost)));
+
+            Need(ref m, typeof(Player), "GetFirstRequiredItem", new[] { typeof(Inventory), typeof(Recipe), typeof(int), typeof(int).MakeByRefType(), typeof(int).MakeByRefType(), typeof(int) }, "Player.GetFirstRequiredItem(...)");
+            Harmony.Patch(m, postfix: M(nameof(FirstRequiredItemPost)));
 
             // --- building -------------------------------------------------------------------------
             Need(ref m, typeof(Player), "HaveRequirements",
@@ -407,6 +415,26 @@ namespace NoVikingLeftBehind
             Log.LogInfo(msg);
         }
 
+        private static bool _innerRequirementItemsCheck;
+
+        [HarmonyPriority(Priority.VeryHigh)]
+        private static void HaveRequirementItemsPost(Player __instance, Recipe piece, bool discover,
+                                                       int qualityLevel, int amount, ref bool __result)
+        {
+            // Valheim 1.0.7 names this parameter "piece". Harmony matches patch
+            // arguments by name, so this must not be renamed to "recipe".
+            // This inner method checks item availability only. The outer
+            // HaveRequirements path owns the crafting-station/DLC gates.
+            _innerRequirementItemsCheck = true;
+            try { HaveRecipePost(__instance, piece, discover, qualityLevel, amount, ref __result); }
+            finally { _innerRequirementItemsCheck = false; }
+        }
+
+        private static bool MatchesStationUpgrader(Piece.Requirement req, CraftingStation station)
+        {
+            return req != null && req.m_upgraderResource == (station != null && station.m_upgrader);
+        }
+
         private static void HaveRecipePost(Player __instance, Recipe recipe, bool discover,
                                            int qualityLevel, int amount, ref bool __result)
         {
@@ -414,18 +442,17 @@ namespace NoVikingLeftBehind
             if (discover) return;
             if (!Live() || !_pullCrafting.Value) { Diag(recipe, "module off or PullForCrafting=false"); return; }
             if (__instance != Player.m_localPlayer) { Diag(recipe, "not the local player"); return; }
-            if (recipe == null || recipe.m_resources == null || recipe.m_item == null) return;
+            if (recipe == null || recipe.m_resources == null || recipe.m_item == null)
+            {
+                return;
+            }
 
-            // "Only one ingredient" recipes pick a concrete ItemData in Player.GetFirstRequiredItem
-            // and DoCrafting silently does nothing when that comes back null. Saying "yes you can"
-            // here without also producing that item would give a dead craft button, so these stay
-            // vanilla: they craft from the player's own inventory only.
-            if (recipe.m_requireOnlyOneIngredient) { Diag(recipe, "requireOnlyOneIngredient -> vanilla"); return; }
-
+            // GetFirstRequiredItem is patched below for recipes whose concrete item is in a chest.
             try
             {
-                // Vanilla returned false; it may have been the station or the DLC, not the items.
-                if (!__instance.RequiredCraftingStation(recipe, qualityLevel, true))
+                // The inner HaveRequirementItems call is deliberately item-only;
+                // the outer HaveRequirements call must still preserve vanilla station gating.
+                if (!_innerRequirementItemsCheck && !__instance.RequiredCraftingStation(recipe, qualityLevel, true))
                 {
                     var cs = __instance.GetCurrentCraftingStation();
                     Diag(recipe, "RequiredCraftingStation=false (current station=" + (cs ? cs.m_name + " L" + cs.GetLevel() : "none") +
@@ -433,20 +460,28 @@ namespace NoVikingLeftBehind
                     return;
                 }
                 var dlc = recipe.m_item.m_itemData.m_shared.m_dlc;
-                if (dlc.Length > 0 && !DLCMan.instance.IsDLCInstalled(dlc)) { Diag(recipe, "DLC missing"); return; }
+                if (!_innerRequirementItemsCheck && dlc.Length > 0 && !DLCMan.instance.IsDLCInstalled(dlc)) { Diag(recipe, "DLC missing"); return; }
 
                 var boxes = ChestSource.Nearby(__instance.transform.position);
                 if (boxes.Count == 0) { Diag(recipe, "no containers in range"); return; }
 
                 var sb = _diag != null && _diag.Value ? new StringBuilder() : null;
+                bool foundOne = false;
+                var station = __instance.GetCurrentCraftingStation();
                 foreach (var req in recipe.m_resources)
                 {
-                    if (req == null || !req.m_resItem) continue;
+                    if (req == null || !req.m_resItem || !MatchesStationUpgrader(req, station)) continue;
                     int need = req.GetAmount(qualityLevel) * amount;
                     if (need <= 0) continue;
                     int have = Available(__instance, req, need, boxes);
                     if (sb != null) sb.Append(req.m_resItem.m_itemData.m_shared.m_name).Append(' ').Append(have).Append('/').Append(need).Append(' ');
-                    if (have < need)
+                    if (have >= need)
+                    {
+                        foundOne = true;
+                        if (recipe.m_requireOnlyOneIngredient) break;
+                        continue;
+                    }
+                    if (!recipe.m_requireOnlyOneIngredient)
                     {
                         Diag(recipe, "short: " + sb + "(boxes=" + boxes.Count + ", bag=" +
                                      __instance.m_inventory.CountItems(req.m_resItem.m_itemData.m_shared.m_name) +
@@ -457,8 +492,11 @@ namespace NoVikingLeftBehind
                     }
                 }
 
-                __result = true;
-                Diag(recipe, "OK from containers: " + sb);
+                if (foundOne || !recipe.m_requireOnlyOneIngredient)
+                {
+                    __result = true;
+                    Diag(recipe, "OK from containers: " + sb);
+                }
             }
             catch (Exception e)
             {
@@ -478,16 +516,50 @@ namespace NoVikingLeftBehind
             string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
             bool blocked = ChestSource.ItemBlocked(prefab, shared);
 
-            int best = 0;
-            int maxQ = Mathf.Max(1, req.m_resItem.m_itemData.m_shared.m_maxQuality);
-            for (int q = 1; q <= maxQ; q++)
+            // Crafting requirements are consumed by shared name. Count all qualities
+            // together, matching vanilla's inventory check and the established chest
+            // crafting behaviour used by AzuCraftyBoxes. Splitting this by quality can
+            // report a false shortage for ordinary quality-1 materials in Valheim 1.0.7.
+            int have = p.m_inventory.CountItems(shared);
+            if (!blocked && have < need) have += ChestSource.Count(shared, boxes);
+            return have;
+        }
+
+        private static void FirstRequiredItemPost(Player __instance, Inventory inventory, Recipe recipe,
+                                                  int qualityLevel, ref int amount, ref int extraAmount,
+                                                  int craftMultiplier, ref ItemDrop.ItemData __result)
+        {
+            if (__result != null || !Live() || !_pullCrafting.Value) return;
+            if (__instance != Player.m_localPlayer || recipe == null || recipe.m_resources == null) return;
+            try
             {
-                int have = p.m_inventory.CountItems(shared, q);
-                if (!blocked && have < need) have += ChestSource.Count(shared, boxes, q);
-                if (have > best) best = have;
-                if (best >= need) break;
+                var boxes = ChestSource.Nearby(__instance.transform.position);
+                if (boxes.Count == 0) return;
+                var station = __instance.GetCurrentCraftingStation();
+                foreach (var req in recipe.m_resources)
+                {
+                    if (req == null || !req.m_resItem || !MatchesStationUpgrader(req, station)) continue;
+                    string shared = req.m_resItem.m_itemData.m_shared.m_name;
+                    string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
+                    if (ChestSource.ItemBlocked(prefab, shared)) continue;
+                    int required = req.GetAmount(qualityLevel) * craftMultiplier;
+                    if (required <= 0 || ChestSource.Count(shared, boxes) < required) continue;
+                    for (int i = 0; i < boxes.Count; i++)
+                    {
+                        var item = boxes[i].Inv != null ? boxes[i].Inv.GetItem(shared) : null;
+                        if (item == null) continue;
+                        __result = item;
+                        amount = required;
+                        extraAmount = req.m_extraAmountOnlyOneIngredient;
+                        Diag(recipe, "selected " + shared + " from nearby container");
+                        return;
+                    }
+                }
             }
-            return best;
+            catch (Exception e)
+            {
+                Log.LogWarning("[Chests] GetFirstRequiredItem postfix: " + e.Message);
+            }
         }
 
         // ---- building: can I place this? -------------------------------------------------------------
@@ -574,10 +646,11 @@ namespace NoVikingLeftBehind
                 var boxes = ChestSource.Nearby(__instance.transform.position);
                 if (boxes.Count == 0) return;
 
+                var station = __instance.GetCurrentCraftingStation();
                 for (int i = 0; i < requirements.Length && i < __state.Length; i++)
                 {
                     var r = requirements[i];
-                    if (r == null || !r.m_resItem) continue;
+                    if (r == null || !r.m_resItem || !MatchesStationUpgrader(r, station)) continue;
 
                     int need = r.GetAmount(qualityLevel) * multiplier;
                     if (need <= 0) continue;
@@ -626,6 +699,8 @@ namespace NoVikingLeftBehind
                 if (!int.TryParse(tmp.text, out need)) need = req.GetAmount(quality) * craftMultiplier;
                 if (need <= 0) return;
 
+                var station = player.GetCurrentCraftingStation();
+                if (!MatchesStationUpgrader(req, station)) return;
                 string shared = req.m_resItem.m_itemData.m_shared.m_name;
                 string prefab = Utils.GetPrefabName(req.m_resItem.gameObject);
 

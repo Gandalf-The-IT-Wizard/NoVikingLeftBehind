@@ -1,6 +1,24 @@
 
 # Changelog — NoVikingLeftBehind
 
+## 1.0.3 (2026-09-12) — AutoEat expiry grace period
+
+* Fixed `AutoEatFromFoodSlots` replacing food as soon as vanilla allowed it, even while `FoodNoDecay` was still preserving the active food's full bonuses.
+* Added synced `[Slots] AutoEatWhenSecondsLeft` (default `10`): when `FoodNoDecay` is enabled, AutoEat waits until every active food effect has at most that many seconds remaining. `0` preserves the previous behaviour.
+* Built against Valheim `1.0.12` (network version 40) and BepInEx `5.4.2350`.
+
+## 1.0.2 (2026-09-11) — Crafting availability check fix
+
+* Fixed the remaining greyed-out Craft button on Valheim 1.0.7 by patching the inner `Player.HaveRequirementItems` check used by the crafting UI.
+* Retained the `HaveRequirements` and `GetFirstRequiredItem` patches for the outer game paths and concrete chest-item resolution.
+
+## 1.0.0 (2026-09-11) — CraftFromChests crafting fix
+
+* Fixed crafting recipes failing with **Missing requirement** when their materials were available in nearby accessible containers.
+* Added concrete item resolution through `Player.GetFirstRequiredItem`, allowing vanilla `DoCrafting` to complete the same chest-backed craft path as the UI check.
+* Corrected alternative-ingredient recipes so they are evaluated as “one sufficient ingredient” rather than requiring every alternative.
+* Built against Valheim `1.0.7` (network version 39) and BepInEx `5.4.2350`.
+
 ## 0.10.0 (2026-09-09) — BuildersGuild: cheaper building at the base (38th module)
 
 New module **BuildersGuild** `[Builders]` — build big at your base without turning costs off. Three factors, all live-editable,
