@@ -54,7 +54,7 @@ jobs:
           schemaVersion = "0.0.1"
 
           [package]
-          namespace = "Nosferatu"
+          namespace = "Fellowship_of_the_Ring"
           name = "$name"
           versionNumber = "$version"
           description = "see manifest.json"
@@ -69,6 +69,9 @@ jobs:
           [publish]
           repository = "https://thunderstore.io"
           communities = ["valheim"]
+
+          [publish.categories]
+          valheim = ["mods"]
           EOF
             sed -i 's/^          //' "tcli-$name.toml"
             tcli publish --file "$zip" --config-path "tcli-$name.toml"
