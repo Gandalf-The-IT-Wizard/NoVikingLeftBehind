@@ -5,6 +5,7 @@
 // for this codebase: per-station toggles, measured consumption and an ownership guard.
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using BepInEx.Configuration;
 using HarmonyLib;
@@ -82,6 +83,13 @@ namespace NoVikingLeftBehind
 
         private static KeyCode _keyMain = KeyCode.None;
         private static KeyCode[] _keyMods = new KeyCode[0];
+
+        // Optional compatibility patch for WaterproofYourWood. The assembly is deliberately
+        // discovered at runtime: NVLB must not require that mod to be installed.
+        private static bool _waterproofPatched;
+        private static bool _waterproofPatchReported;
+        private static Type _waterproofInventoryType;
+        private static FieldInfo _waterproofInventoryField;
 
         /// <summary>Parsed OvenPrefabs, case-insensitive. Rebuilt by PushSettings on every change.</summary>
         private static HashSet<string> _ovenSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -389,6 +397,7 @@ namespace NoVikingLeftBehind
         {
             if (_self == null || !_self.Active || !ClientActive()) return;
             if (__instance != Player.m_localPlayer) return;
+            TryInstallWaterproofBrushCompatibility();
             if (!NvlbKeys.Down("ChestToggle")) return;
             for (int i = 0; i < _keyMods.Length; i++)
                 if (!Input.GetKey(_keyMods[i])) return;
@@ -400,6 +409,126 @@ namespace NoVikingLeftBehind
             Log.LogInfo("[Chests] " + msg);
             try { __instance.Message(MessageHud.MessageType.Center, msg); }
             catch { /* no hud yet */ }
+        }
+
+        // ---- optional WaterproofYourWood compatibility ----------------------------------------------
+
+        private static void TryInstallWaterproofBrushCompatibility()
+        {
+            if (_waterproofPatched) return;
+            try
+            {
+                Type type = null;
+                var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                for (int i = 0; i < assemblies.Length && type == null; i++)
+                {
+                    try
+                    {
+                        type = assemblies[i].GetType("WaterproofBrushPlugin+GameInventory", false);
+                        if (type == null)
+                        {
+                            var types = assemblies[i].GetTypes();
+                            for (int j = 0; j < types.Length; j++)
+                            {
+                                if (types[j].FullName == "WaterproofBrushPlugin+GameInventory")
+                                {
+                                    type = types[j];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (ReflectionTypeLoadException) { /* another plugin may expose partial types */ }
+                    catch { /* optional assembly probing must never break NVLB */ }
+                }
+                if (type == null) return;
+
+                var count = AccessTools.Method(type, "Count", new[] { typeof(string) });
+                var spend = AccessTools.Method(type, "Spend", new[] { typeof(string), typeof(int) });
+                _waterproofInventoryField = AccessTools.Field(type, "_inventory");
+                if (count == null || spend == null || _waterproofInventoryField == null)
+                    throw new MissingMemberException("WaterproofYourWood GameInventory Count/Spend/_inventory not found");
+
+                _waterproofInventoryType = type;
+                _self.Harmony.Patch(count, postfix: M(nameof(WaterproofCountPost)));
+                _self.Harmony.Patch(spend, prefix: M(nameof(WaterproofSpendPre)));
+                _waterproofPatched = true;
+                Log.LogInfo("[Chests] WaterproofYourWood compatibility applied: GameInventory Count/Spend pull Wood and Resin from nearby containers");
+            }
+            catch (Exception e)
+            {
+                if (!_waterproofPatchReported)
+                {
+                    _waterproofPatchReported = true;
+                    Log.LogWarning("[Chests] WaterproofYourWood compatibility unavailable: " + e.Message);
+                }
+            }
+        }
+
+        private static bool IsWaterproofResource(string resource, out string prefab, out string shared)
+        {
+            prefab = resource;
+            shared = null;
+            if (!string.Equals(resource, "Wood", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(resource, "Resin", StringComparison.OrdinalIgnoreCase)) return false;
+            try
+            {
+                var go = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(resource) : null;
+                var drop = go != null ? go.GetComponent<ItemDrop>() : null;
+                if (drop == null || drop.m_itemData == null || drop.m_itemData.m_shared == null) return false;
+                shared = drop.m_itemData.m_shared.m_name;
+                prefab = Utils.GetPrefabName(go);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private static void WaterproofCountPost(object __instance, string resource, ref int __result)
+        {
+            if (!Live() || !_pullCrafting.Value || !_waterproofPatched || __instance == null) return;
+            string prefab, shared;
+            if (!IsWaterproofResource(resource, out prefab, out shared) ||
+                ChestSource.ItemBlocked(prefab, shared)) return;
+            try
+            {
+                __result += ChestSource.Count(shared, ChestSource.Nearby(Player.m_localPlayer.transform.position));
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning("[Chests] WaterproofYourWood Count postfix failed: " + e.Message);
+            }
+        }
+
+        private static bool WaterproofSpendPre(object __instance, string resource, int amount)
+        {
+            if (!Live() || !_pullCrafting.Value || !_waterproofPatched || __instance == null) return true;
+            string prefab, shared;
+            if (!IsWaterproofResource(resource, out prefab, out shared) ||
+                ChestSource.ItemBlocked(prefab, shared)) return true;
+            try
+            {
+                var inv = _waterproofInventoryField.GetValue(__instance) as Inventory;
+                if (inv == null || amount <= 0) return false;
+
+                int before = inv.CountItems(shared, -1, true);
+                int playerTake = Math.Min(amount, before);
+                if (playerTake > 0) inv.RemoveItem(shared, playerTake, -1, true);
+                int took = before - inv.CountItems(shared, -1, true);
+                int owed = amount - took;
+                if (owed > 0)
+                {
+                    var boxes = ChestSource.Nearby(Player.m_localPlayer.transform.position);
+                    int got = ChestSource.Consume(shared, owed, -1, boxes);
+                    if (got < owed)
+                        Log.LogWarning("[Chests] WaterproofYourWood spent only " + got + "/" + owed + " " + prefab + " from nearby containers");
+                }
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning("[Chests] WaterproofYourWood Spend prefix failed: " + e.Message);
+                return true;
+            }
         }
 
         // ---- crafting: can I make this? -----------------------------------------------------------------
