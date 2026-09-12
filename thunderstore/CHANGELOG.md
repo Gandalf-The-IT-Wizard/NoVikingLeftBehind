@@ -1,6 +1,12 @@
 
 # Changelog — NoVikingLeftBehind
 
+## 1.0.4 (2026-09-12) — Smelter and kiln chest pull fix
+
+* Fixed chest-backed ore and wood insertion into Smelters and Charcoal kilns.
+* `Smelter.RPC_AddOre` now receives the `cheated` flag expected by Valheim 1.0.12, preventing the `Unable to read beyond the end of the stream` warning.
+* Built against Valheim `1.0.12` (network version 40) and BepInEx `5.4.2350`.
+
 ## 1.0.3 (2026-09-12) — AutoEat expiry grace period
 
 * Fixed `AutoEatFromFoodSlots` replacing food as soon as vanilla allowed it, even while `FoodNoDecay` was still preserving the active food's full bonuses.

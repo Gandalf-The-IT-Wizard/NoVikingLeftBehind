@@ -751,7 +751,10 @@ namespace NoVikingLeftBehind
                     if (ChestSource.Consume(shared, 1, -1, boxes) != 1) continue;
 
                     user.Message(MessageHud.MessageType.Center, "$msg_added " + shared);
-                    nview.InvokeRPC("RPC_AddOre", prefab);
+                    // Valheim 1.0.12's RPC_AddOre expects (prefab, cheated). The vanilla
+                    // OnAddOre path forwards ItemData.m_cheated; omitting it leaves the RPC
+                    // reader at the end of the stream and the ore is never queued.
+                    nview.InvokeRPC("RPC_AddOre", prefab, conv.m_from.m_itemData.m_cheated);
                     __result = true;
                     return false;
                 }
