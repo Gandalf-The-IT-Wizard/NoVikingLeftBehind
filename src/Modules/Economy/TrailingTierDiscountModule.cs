@@ -498,9 +498,16 @@ namespace NoVikingLeftBehind
         /// (Vanilla's own modifiers - the Feast stack percentage and the /3 for pieces not placed
         /// by a player - then apply on top, unchanged.)
         /// </summary>
-        private static void DropResourcesPre(Piece __instance, out int[] __state)
+        private static void DropResourcesPre(Piece __instance, HitData hitData, out int[] __state)
         {
-            __state = ScaleInPlace(__instance, true);
+            // Valheim divides the refund by three when IsPlacedByPlayer() is false. On
+            // dedicated servers a player-built piece can arrive without its creator metadata,
+            // which turns a discounted cost of 2 into the observed refund of 1. For a player
+            // deconstruction, compensate that vanilla fallback so the player receives exactly
+            // the amount that was paid. Normal player-owned pieces are untouched.
+            bool compensateVanillaUnplacedRefund =
+                __instance != null && !__instance.IsPlacedByPlayer() && IsPlayerDeconstruct(hitData);
+            __state = ScaleInPlace(__instance, true, compensateVanillaUnplacedRefund);
         }
 
         private static void DropResourcesFin(Piece __instance, int[] __state)
@@ -508,10 +515,22 @@ namespace NoVikingLeftBehind
             RestoreInPlace(__instance, __state);
         }
 
+        /// <summary>Whether DropResources was reached through a player's deconstruction action.
+        /// HitData normally carries the attacker; the tool-tier fallback covers the dedicated
+        /// server path where the attacker is not yet resolved locally.
+        /// </summary>
+        private static bool IsPlayerDeconstruct(HitData hit)
+        {
+            if (hit == null) return true; // Player.RemovePiece calls DropResources(null).
+            var attacker = hit.GetAttacker();
+            if (attacker is Player) return true;
+            return hit.m_toolTier > 0;
+        }
+
         /// <summary>Rewrite a piece's m_amount fields for the duration of one call, one requirement
         /// at a time (the yard prices wood and iron differently inside the same piece). Returns the
         /// saved originals, or null when nothing was touched.</summary>
-        private static int[] ScaleInPlace(Piece piece, bool forRefund)
+        private static int[] ScaleInPlace(Piece piece, bool forRefund, bool compensateVanillaUnplacedRefund = false)
         {
             if (!PieceLive() || piece == null || piece.m_resources == null) return null;
 
@@ -523,6 +542,8 @@ namespace NoVikingLeftBehind
                 if (r == null || r.m_amount <= 0) continue;
 
                 int now = PieceAmount(piece, r, r.m_amount, forRefund);
+                if (forRefund && compensateVanillaUnplacedRefund && now > 0)
+                    now = checked(now * 3); // Piece.DropResources divides this path by 3.
                 if (now == r.m_amount) continue;
 
                 if (saved == null)

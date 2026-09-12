@@ -1082,9 +1082,10 @@ namespace NoVikingLeftBehind
                 _pendingPrefab = null;
                 _pendingFrame = -1;
 
-                // Only structural pieces carry a record: everything else is priced by the
-                // multipliers, which the refund path recomputes the same way.
-                if (!IsStructural(piece) || !TrailingTierDiscountModule.BuildCostsActive()) return;
+                // Record every piece, not only structural beams and poles. The refund path must
+                // return the exact amount paid for an ordinary discounted piece too; recomputing
+                // the live price can apply the yard/skill/rhythm factors a second time.
+                if (!TrailingTierDiscountModule.BuildCostsActive()) return;
                 if (piece.m_resources == null) return;
 
                 for (int i = 0; i < piece.m_resources.Length; i++)
