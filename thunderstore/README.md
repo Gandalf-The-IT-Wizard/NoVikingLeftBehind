@@ -1,5 +1,20 @@
 # NoVikingLeftBehind — the ultimate Valheim quality-of-life mod!
 
+> [!IMPORTANT]
+> **This is a maintained fork of [Nosferatu/NoVikingLeftBehind on Thunderstore](https://thunderstore.io/c/valheim/p/Nosferatu/NoVikingLeftBehind/).**
+> It is maintained independently and gradually fixes issues from the original version while preserving its quality-of-life features.
+>
+> ### Cheated-world achievements
+>
+> If Valheim marks the world as cheated after using developer commands, enter the following command in the in-game console to re-enable achievements:
+>
+> ```text
+> /yesiuseddevcommandsbutiwantmyachievementsanyway
+> ```
+>
+> Use this deliberately: it bypasses Valheim's normal cheated-world restriction.
+
+
 **One install. Thirty-six modules. Zero arguments about config.** NoVikingLeftBehind is the
 all-in-one quality-of-life mod for co-op Valheim: extra inventory slots, one-key loadouts, fist
 weapons with a shield, crafting straight from your chests, food that never decays, a compass back

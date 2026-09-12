@@ -1,5 +1,20 @@
 # NoVikingLeftBehind — the ultimate Valheim quality-of-life mod
 
+> [!IMPORTANT]
+> **This is a maintained fork of [Nosferatu/NoVikingLeftBehind on Thunderstore](https://thunderstore.io/c/valheim/p/Nosferatu/NoVikingLeftBehind/).**
+> It is maintained independently and gradually fixes issues from the original version while preserving its quality-of-life features.
+>
+> ### Cheated-world achievements
+>
+> If Valheim marks the world as cheated after using developer commands, enter the following command in the in-game console to re-enable achievements:
+>
+> ```text
+> /yesiuseddevcommandsbutiwantmyachievementsanyway
+> ```
+>
+> Use this deliberately: it bypasses Valheim's normal cheated-world restriction.
+
+
 A BepInEx 5 mod for Valheim 1.0, built and maintained for a small dedicated-server group
 and released here for anyone to use. MIT licensed.
 
@@ -9,7 +24,7 @@ runs, guardian powers, ore regrowth, portals and a frontier-based catch-up syste
 every player. The server enforces every setting (via [ServerSync](https://github.com/blaxxun-boop/ServerSync)),
 so nobody has to agree on config by hand.
 
-1.0.3 is built and tested against Valheim `1.0.12` (network version 40) / BepInEx `5.4.2350`.
+1.0.4 is built and tested against Valheim `1.0.12` (network version 40) / BepInEx `5.4.2350`.
 For servers held on the `default_pre1_0` branch (0.221.12) use 0.8.8.
 
 ## Install (players, via r2modman / Thunderstore)

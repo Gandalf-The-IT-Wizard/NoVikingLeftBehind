@@ -26,7 +26,7 @@ namespace NoVikingLeftBehind
     {
         public const string PluginGuid = "Nosferatu.NoVikingLeftBehind";
         public const string PluginName = "NoVikingLeftBehind";
-        public const string PluginVersion = "1.0.3";
+        public const string PluginVersion = "1.0.4";
 
         internal static ManualLogSource Log;
         internal static ConfigSync ConfigSync;
