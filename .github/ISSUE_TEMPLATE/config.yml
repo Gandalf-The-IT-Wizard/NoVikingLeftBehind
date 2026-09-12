@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: NoVikingLeftBehind on Thunderstore
+    url: https://thunderstore.io/c/valheim/p/Fellowship_of_the_Ring/NoVikingLeftBehind/
+    about: Download the maintained fork and check the current release before opening an issue.

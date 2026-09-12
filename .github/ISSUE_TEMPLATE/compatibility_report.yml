@@ -1,0 +1,88 @@
+name: Compatibility report
+description: Report a conflict or regression involving Valheim, BepInEx, or another mod.
+title: "[Compatibility]: "
+labels:
+  - compatibility
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the behavior depends on a specific game build, server/client combination, or another mod.
+
+        Please remove personal information from logs and do not attach credentials or private world data.
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: NoVikingLeftBehind version
+      placeholder: "1.0.5"
+    validations:
+      required: true
+
+  - type: input
+    id: valheim-version
+    attributes:
+      label: Valheim version and network version
+      placeholder: "1.0.12 / network version 40"
+    validations:
+      required: true
+
+  - type: input
+    id: bepinex-version
+    attributes:
+      label: BepInEx version
+      placeholder: "5.4.2350"
+    validations:
+      required: true
+
+  - type: textarea
+    id: conflicting-mods
+    attributes:
+      label: Other relevant mods
+      description: Include mod names, versions, and load order if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Describe client/server setup, single-player or multiplayer, and whether both sides use matching mod versions.
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and evidence
+      description: Include the relevant log lines, stack trace, or reproduction video/screenshots.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Explain whether the issue still occurs with only NoVikingLeftBehind, BepInEx, and the conflicting mod enabled.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I included exact versions for all relevant mods.
+          required: true
+        - label: I removed private information from the attached logs.
+          required: true

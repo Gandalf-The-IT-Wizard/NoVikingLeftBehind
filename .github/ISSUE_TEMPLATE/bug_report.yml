@@ -1,0 +1,115 @@
+name: Bug report
+description: Report a reproducible problem with NoVikingLeftBehind.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve NoVikingLeftBehind.
+
+        Please search existing issues first and remove personal information from logs before posting.
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: NoVikingLeftBehind version
+      description: Which fork/release is installed?
+      placeholder: "1.0.5"
+    validations:
+      required: true
+
+  - type: input
+    id: valheim-version
+    attributes:
+      label: Valheim version
+      description: Include the network version when known.
+      placeholder: "1.0.12 / network version 40"
+    validations:
+      required: true
+
+  - type: input
+    id: bepinex-version
+    attributes:
+      label: BepInEx version
+      placeholder: "5.4.2350"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: side
+    attributes:
+      label: Where does the problem occur?
+      options:
+        - Client
+        - Dedicated server
+        - Client and dedicated server
+        - Single-player world
+    validations:
+      required: true
+
+  - type: textarea
+    id: module-and-config
+    attributes:
+      label: Affected module and configuration
+      description: Name the NVLB module and include the relevant config values.
+      placeholder: "[Builders] ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and why it is a problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Give a minimal, numbered reproduction using a fresh or known save where possible.
+      placeholder: |
+        1. Enable ...
+        2. Place ...
+        3. Interact with ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste the complete relevant warning/error and surrounding lines. Use a code block.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: other-mods
+    attributes:
+      label: Other mods and load order
+      description: List other gameplay/config mods that could affect this path.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I tested with the current release or included the exact version tested.
+          required: true
+        - label: I removed passwords, tokens, world names, and other private data from logs.
+          required: true
