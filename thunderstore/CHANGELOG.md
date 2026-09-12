@@ -1,6 +1,12 @@
 
 # Changelog — NoVikingLeftBehind
 
+## 1.0.5 (2026-09-12) — Full discounted build refunds
+
+* Fixed deconstruct refunds for discounted build pieces: every newly placed piece records the exact material amount paid, so deconstructing it returns that amount instead of recalculating the price and returning only part of it.
+* Verified with a Stakewall costing 2 Wood in the BuildersGuild yard and returning 2 Wood.
+* Built against Valheim `1.0.12` (network version 40) and BepInEx `5.4.2350`.
+
 ## 1.0.4 (2026-09-12) — Smelter and kiln chest pull fix
 
 * Fixed chest-backed ore and wood insertion into Smelters and Charcoal kilns.
