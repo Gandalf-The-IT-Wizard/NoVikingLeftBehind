@@ -1,0 +1,62 @@
+name: Feature request
+description: Suggest a focused improvement to NoVikingLeftBehind.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the suggestion. A clear use case helps keep the mod's many modules from becoming a second Valheim wiki.
+
+        Please search existing issues first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What limitation or repeated task should this feature address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe what the feature should do from a player's or server administrator's perspective.
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration and permissions
+      description: Suggest defaults, ranges, live/restart behavior, and whether the setting should be server-synced or local.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention workarounds, other mods, or alternative designs you considered.
+    validations:
+      required: false
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility considerations
+      description: Note affected Valheim systems, modules, other mods, or multiplayer implications.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: This request is for NoVikingLeftBehind rather than a separate unrelated mod.
+          required: true
