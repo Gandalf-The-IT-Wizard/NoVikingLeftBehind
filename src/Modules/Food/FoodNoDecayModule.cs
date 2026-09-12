@@ -183,9 +183,10 @@ namespace NoVikingLeftBehind
         /// effect still has more than the configured grace period left. This is intentionally
         /// owned by FoodNoDecay: with the module off, AutoEat keeps its vanilla-like behaviour.
         /// </summary>
-        internal static bool ShouldDelayAutoEat(Player player, float eatWhenSecondsLeft)
+        internal static bool ShouldDelayAutoEat(Player player, ItemDrop.ItemData candidate, float eatWhenSecondsLeft)
         {
-            if (_self == null || !_self.Active || !ClientActive() || player == null || eatWhenSecondsLeft <= 0f)
+            if (_self == null || !_self.Active || !ClientActive() || player == null ||
+                candidate == null || candidate.m_shared == null || eatWhenSecondsLeft <= 0f)
                 return false;
 
             var foods = player.GetFoods();
@@ -193,10 +194,37 @@ namespace NoVikingLeftBehind
             for (int i = 0; i < foods.Count; i++)
             {
                 var food = foods[i];
-                if (food != null && food.m_time > eatWhenSecondsLeft)
-                    return true;
+                if (food == null || food.m_item == null || food.m_item.m_shared == null) continue;
+                if (!string.Equals(food.m_item.m_shared.m_name, candidate.m_shared.m_name,
+                                   StringComparison.Ordinal)) continue;
+
+                // Valheim's Player.Food.m_time is the remaining time. CanEatAgain() confirms
+                // this by allowing the same food again once m_time is below half of its burn time.
+                // Compare only the effect belonging to THIS candidate item: a long-running
+                // sausage effect must not block honey or raspberries in other food slots.
+                float remaining = Mathf.Max(0f, food.m_time);
+                return remaining > eatWhenSecondsLeft;
             }
             return false;
+        }
+
+        internal static string DescribeAutoEatTimers(Player player)
+        {
+            if (player == null || player.GetFoods() == null) return "active-foods=none";
+            var foods = player.GetFoods();
+            var sb = new StringBuilder("active-foods=");
+            bool any = false;
+            for (int i = 0; i < foods.Count; i++)
+            {
+                var food = foods[i];
+                if (food == null || food.m_item == null || food.m_item.m_shared == null) continue;
+                if (any) sb.Append(", ");
+                any = true;
+                float remaining = Mathf.Max(0f, food.m_time);
+                sb.Append(food.m_item.m_shared.m_name).Append(" remaining=")
+                  .Append(remaining.ToString("0.0")).Append("s");
+            }
+            return any ? sb.ToString() : "active-foods=none";
         }
 
         /// <summary>

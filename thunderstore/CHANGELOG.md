@@ -1,6 +1,12 @@
 
 # Changelog — NoVikingLeftBehind
 
+## 1.0.6 (2026-09-12) — Per-food AutoEat timing
+
+* Fixed AutoEat timing so each dedicated food slot is checked against its own active food effect. A long-running food in one slot no longer blocks a different food that is within the configured expiry threshold.
+* Removed temporary AutoEat diagnostic scan logging; successful automatic eating still logs the food and source slot.
+* Built against Valheim `1.0.12` (network version 40) and BepInEx `5.4.2350`.
+
 ## 1.0.5 (2026-09-12) — Full discounted build refunds
 
 * Fixed deconstruct refunds for discounted build pieces: every newly placed piece records the exact material amount paid, so deconstructing it returns that amount instead of recalculating the price and returning only part of it.
