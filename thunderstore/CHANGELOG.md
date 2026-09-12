@@ -1,6 +1,13 @@
 
 # Changelog — NoVikingLeftBehind
 
+## 1.0.7 (2026-09-12) — WaterproofYourWood compatibility
+
+* Added compatibility with WaterproofYourWood 1.0.13 and its custom Waterproofing Brush inventory path.
+* Wood and Resin can be counted and consumed from nearby NVLB containers when crafting or using the brush.
+* Preserves NVLB range, ownership, ward, excluded-item, vehicle, and LeaveOneItem rules.
+* Built against Valheim `1.0.12` (network version 40) and BepInEx `5.4.2350`.
+
 ## 1.0.6 (2026-09-12) — Per-food AutoEat timing
 
 * Fixed AutoEat timing so each dedicated food slot is checked against its own active food effect. A long-running food in one slot no longer blocks a different food that is within the configured expiry threshold.
